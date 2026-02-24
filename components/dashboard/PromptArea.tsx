@@ -185,6 +185,7 @@ export function PromptArea({
   const [value, setValue] = React.useState('');
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const [isImageDialogOpen, setIsImageDialogOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   React.useLayoutEffect(() => {
     const textarea = internalTextareaRef.current;
@@ -233,109 +234,110 @@ export function PromptArea({
   const hasValue = value.trim().length > 0 || imagePreview;
 
   return (
-    <div className={cn('relative flex flex-col rounded-[28px] p-3 shadow-sm transition-colors bg-white/10 backdrop-blur-sm cursor-text overflow-hidden', className)}>
-      <BorderBeam
-        size={80}
-        duration={8}
-        colorFrom="#06b6d4"
-        colorTo="#14b8a6"
-      />
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept="image/*"
-      />
+    <div ref={containerRef} className={cn('relative w-full max-w-2xl overflow-hidden rounded-2xl', className)}>
+      {/* Card Background */}
+      <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+        <BorderBeam duration={8} size={100} />
 
-      {imagePreview && (
-        <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
-          <div className="relative mb-2 w-fit rounded-[1rem] px-1 pt-1">
-            <button
-              type="button"
-              className="transition-transform"
-              onClick={() => setIsImageDialogOpen(true)}
-            >
-              <img src={imagePreview} alt="Image preview" className="h-14 w-14 rounded-[1rem]" />
-            </button>
-            <button
-              onClick={handleRemoveImage}
-              className="absolute right-2 top-2 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-white/50 dark:bg-[#303030] text-black dark:text-white transition-colors hover:bg-accent dark:hover:bg-[#515151]"
-              aria-label="Remove image"
-            >
-              <XIcon className="h-4 w-4" />
-            </button>
-          </div>
-          <DialogContent>
-            <img src={imagePreview} alt="Full size preview" className="w-full max-h-[95vh] object-contain rounded-[24px]" />
-          </DialogContent>
-        </Dialog>
-      )}
+        <form onSubmit={handleSubmit} className="flex flex-col p-4">
+              <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept="image/*"
+          />
 
-      <textarea
-        ref={internalTextareaRef}
-        rows={1}
-        value={value}
-        onChange={handleInputChange}
-        placeholder={placeholder}
-        className="custom-scrollbar w-full resize-none border-0 bg-transparent p-3 text-white placeholder:text-white/40 focus:ring-0 focus-visible:outline-none min-h-12"
-      />
-
-      <div className="mt-0.5 p-1 pt-0">
-        <TooltipProvider delayDuration={100}>
-          <div className="flex items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
+          {imagePreview && (
+            <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+              <div className="relative mb-2 w-fit rounded-[1rem] px-1 pt-1">
                 <button
                   type="button"
-                  onClick={handlePlusClick}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none"
+                  className="transition-transform"
+                  onClick={() => setIsImageDialogOpen(true)}
                 >
-                  <PlusIcon className="h-6 w-6" />
-                  <span className="sr-only">Attach image</span>
+                  <img src={imagePreview} alt="Image preview" className="h-14 w-14 rounded-[1rem]" />
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" showArrow={true}>
-                <p>이미지 첨부</p>
-              </TooltipContent>
-            </Tooltip>
+                <button
+                  onClick={handleRemoveImage}
+                  className="absolute right-2 top-2 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-white/50 dark:bg-[#303030] text-black dark:text-white transition-colors hover:bg-accent dark:hover:bg-[#515151]"
+                  aria-label="Remove image"
+                >
+                  <XIcon className="h-4 w-4" />
+                </button>
+              </div>
+              <DialogContent>
+                <img src={imagePreview} alt="Full size preview" className="w-full max-h-[95vh] object-contain rounded-[24px]" />
+              </DialogContent>
+            </Dialog>
+          )}
 
-            {/* Right-aligned buttons container */}
-            <div className="ml-auto flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none"
-                  >
-                    <MicIcon className="h-5 w-5" />
-                    <span className="sr-only">Record voice</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" showArrow={true}>
-                  <p>음성 입력</p>
-                </TooltipContent>
-              </Tooltip>
+          <textarea
+            ref={internalTextareaRef}
+            rows={1}
+            value={value}
+            onChange={handleInputChange}
+            placeholder={placeholder}
+            className="custom-scrollbar w-full resize-none border-0 bg-transparent p-3 text-white placeholder:text-white/40 focus:ring-0 focus-visible:outline-none min-h-12"
+          />
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="submit"
-                    disabled={!hasValue}
-                    onClick={handleSubmit}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-900 hover:shadow-lg hover:shadow-cyan-400/50 disabled:opacity-50"
-                  >
-                    <SendIcon className="h-6 w-6" />
-                    <span className="sr-only">Send message</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" showArrow={true}>
-                  <p>전송</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+          <div className="mt-0.5 p-1 pt-0">
+            <TooltipProvider delayDuration={100}>
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handlePlusClick}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none"
+                    >
+                      <PlusIcon className="h-6 w-6" />
+                      <span className="sr-only">Attach image</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" showArrow={true}>
+                    <p>이미지 첨부</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Right-aligned buttons container */}
+                <div className="ml-auto flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none"
+                      >
+                        <MicIcon className="h-5 w-5" />
+                        <span className="sr-only">Record voice</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" showArrow={true}>
+                      <p>음성 입력</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="submit"
+                        disabled={!hasValue}
+                        onClick={handleSubmit}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-900 hover:shadow-lg hover:shadow-cyan-400/50 disabled:opacity-50"
+                      >
+                        <SendIcon className="h-6 w-6" />
+                        <span className="sr-only">Send message</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" showArrow={true}>
+                      <p>전송</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+            </TooltipProvider>
           </div>
-        </TooltipProvider>
+        </form>
       </div>
     </div>
   );

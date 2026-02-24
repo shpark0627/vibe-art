@@ -2,9 +2,13 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import * as PopoverPrimitive from '@radix-ui/react-popover';
+import { useState } from 'react';
 
 const Navbar = () => {
   const { user, loading, signOut } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <nav className="flex items-center justify-between px-8 py-6 lg:px-12">
       {/* Logo */}
@@ -30,10 +34,29 @@ const Navbar = () => {
           <div className="px-6 py-2 text-white/60 text-sm">로딩 중...</div>
         ) : user ? (
           <>
-            <Link href="/dashboard" className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-white text-sm hover:bg-white/10 transition backdrop-blur-md">
-              대시보드
-            </Link>
-            <span className="text-white/70 text-sm hidden lg:block">{user.email}</span>
+            <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+              <PopoverPrimitive.Trigger asChild>
+                <button className="text-white/70 hover:text-white transition text-sm hidden lg:block cursor-pointer">
+                  {user.email}
+                </button>
+              </PopoverPrimitive.Trigger>
+              <PopoverPrimitive.Portal>
+                <PopoverPrimitive.Content
+                  align="end"
+                  sideOffset={8}
+                  className="z-50 w-48 rounded-lg bg-slate-900 dark:bg-[#303030] p-2 text-white dark:text-white shadow-lg outline-none animate-in data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 border border-white/10"
+                >
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center px-4 py-2 rounded-md hover:bg-white/10 transition text-sm"
+                  >
+                    My Page
+                  </Link>
+                  <PopoverPrimitive.Arrow className="fill-slate-900 dark:fill-[#303030]" />
+                </PopoverPrimitive.Content>
+              </PopoverPrimitive.Portal>
+            </PopoverPrimitive.Root>
             <button
               onClick={signOut}
               className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-white text-sm hover:bg-white/10 transition backdrop-blur-md"

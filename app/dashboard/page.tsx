@@ -1,51 +1,47 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import * as THREE from 'three';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardNavbar from '@/components/dashboard/Navbar';
 import { PromptArea } from '@/components/dashboard/PromptArea';
+import * as THREE from 'three';
 
-const DashboardPage = () => {
+export default function DashboardPage() {
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [user, setUser] = useState<{ email: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const containerRef = useRef(null);
+  const [email, setEmail] = useState<string>('');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push('/auth');
-        return;
-      }
-
-      setUser({ email: user.email || '' });
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, [router]);
+    if (!loading && !user) {
+      router.push('/auth');
+    } else if (user?.email) {
+      setEmail(user.email);
+    }
+  }, [user, loading, router]);
 
   useEffect(() => {
     const container = containerRef.current as HTMLDivElement | null;
-    if (!container || loading || !user) return;
+    if (!container || container.offsetParent === null) return;
+
+    const width = container.clientWidth || window.innerWidth;
+    const height = container.clientHeight || window.innerHeight;
 
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.inset = '0';
     container.appendChild(renderer.domElement);
 
     const material = new THREE.ShaderMaterial({
       uniforms: {
-        iTime: { value: 0 },
-        iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+        iTime: { value: 0.0 },
+        iResolution: { value: new THREE.Vector2(width, height) }
       },
       vertexShader: `
         void main() {
@@ -56,60 +52,43 @@ const DashboardPage = () => {
         uniform float iTime;
         uniform vec2 iResolution;
 
-        #define NUM_OCTAVES 3
-
-        float rand(vec2 n) {
-          return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
-        }
-
-        float noise(vec2 p) {
-          vec2 ip = floor(p);
-          vec2 u = fract(p);
-          u = u*u*(3.0-2.0*u);
-
-          float res = mix(
-            mix(rand(ip), rand(ip + vec2(1.0, 0.0)), u.x),
-            mix(rand(ip + vec2(0.0, 1.0)), rand(ip + vec2(1.0, 1.0)), u.x), u.y);
-          return res * res;
-        }
-
-        float fbm(vec2 x) {
-          float v = 0.0;
-          float a = 0.3;
-          vec2 shift = vec2(100);
-          mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
-          for (int i = 0; i < NUM_OCTAVES; ++i) {
-            v += a * noise(x);
-            x = rot * x * 2.0 + shift;
-            a *= 0.4;
-          }
-          return v;
-        }
-
         void main() {
-          vec2 shake = vec2(sin(iTime * 1.2) * 0.005, cos(iTime * 2.1) * 0.005);
-          vec2 p = ((gl_FragCoord.xy + shake * iResolution.xy) - iResolution.xy * 0.5) / iResolution.y * mat2(6.0, -4.0, 4.0, 6.0);
-          vec2 v;
-          vec4 o = vec4(0.0);
+          vec2 fragCoord = gl_FragCoord.xy;
+          vec2 uv = fragCoord / iResolution.xy;
 
-          float f = 2.0 + fbm(p + vec2(iTime * 5.0, 0.0)) * 0.5;
+          // 격자 크기
+          float gridSize = 60.0;
 
-          for (float i = 0.0; i < 35.0; i++) {
-            v = p + cos(i * i + (iTime + p.x * 0.08) * 0.025 + i * vec2(13.0, 11.0)) * 3.5 + vec2(sin(iTime * 3.0 + i) * 0.003, cos(iTime * 3.5 - i) * 0.003);
-            float tailNoise = fbm(v + vec2(iTime * 0.5, i)) * 0.3 * (1.0 - (i / 35.0));
-            vec4 auroraColors = vec4(
-              0.1 + 0.3 * sin(i * 0.2 + iTime * 0.4),
-              0.3 + 0.5 * cos(i * 0.3 + iTime * 0.5),
-              0.7 + 0.3 * sin(i * 0.4 + iTime * 0.3),
-              1.0
-            );
-            vec4 currentContribution = auroraColors * exp(sin(i * i + iTime * 0.8)) / length(max(v, vec2(v.x * f * 0.015, v.y * 1.5)));
-            float thinnessFactor = smoothstep(0.0, 1.0, i / 35.0) * 0.6;
-            o += currentContribution * (1.0 + tailNoise * 0.8) * thinnessFactor;
-          }
+          // 정규화된 격자 좌표
+          vec2 grid = mod(fragCoord, gridSize) / gridSize;
 
-          o = tanh(pow(o / 100.0, vec4(1.6)));
-          gl_FragColor = o * 1.5;
+          // 격자선 두께
+          float lineWidth = 0.08;
+
+          // 가로선과 세로선
+          float hLine = smoothstep(lineWidth, 0.0, abs(grid.y - 0.5) * 2.0);
+          float vLine = smoothstep(lineWidth, 0.0, abs(grid.x - 0.5) * 2.0);
+          float gridLine = max(hLine, vLine);
+
+          // 배경색
+          vec3 bgColor = vec3(0.03, 0.06, 0.12);
+
+          // 격자선 색상
+          vec3 lineColor = vec3(0.06, 0.72, 0.83);
+
+          // 시간에 따른 색상 변화
+          vec3 alternateColor = vec3(0.08, 0.72, 0.65);
+          float colorShift = sin(iTime * 0.3) * 0.5 + 0.5;
+          lineColor = mix(lineColor, alternateColor, colorShift);
+
+          // 교점 강조
+          float intersection = hLine * vLine;
+          lineColor = mix(lineColor, vec3(0.06, 0.82, 0.93), intersection * 0.4);
+
+          // 최종 색상
+          vec3 finalColor = mix(bgColor, lineColor, gridLine);
+
+          gl_FragColor = vec4(finalColor, 1.0);
         }
       `
     });
@@ -127,8 +106,10 @@ const DashboardPage = () => {
     animate();
 
     const handleResize = () => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
+      const newWidth = container.clientWidth || window.innerWidth;
+      const newHeight = container.clientHeight || window.innerHeight;
+      renderer.setSize(newWidth, newHeight);
+      material.uniforms.iResolution.value.set(newWidth, newHeight);
     };
     window.addEventListener('resize', handleResize);
 
@@ -142,31 +123,38 @@ const DashboardPage = () => {
       material.dispose();
       renderer.dispose();
     };
-  }, [loading, user]);
+  }, []);
 
-  if (loading || !user) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-white">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return null;
   }
 
   return (
-    <div ref={containerRef} className="relative w-full min-h-screen overflow-hidden bg-[#181818]">
+    <div className="relative w-full min-h-screen overflow-hidden">
       {/* Three.js Canvas Background */}
-      <div className="absolute inset-0 z-0" />
+      <div ref={containerRef} className="absolute inset-0 z-0" />
 
       {/* UI Overlay */}
       <div className="absolute inset-0 z-10 flex flex-col">
-        {/* Navbar */}
-        <DashboardNavbar email={user.email} />
+        <DashboardNavbar email={email} />
 
-        {/* Main Content - Centered Prompt Area */}
-        <main className="flex-1 flex items-center justify-center px-8 py-12 lg:px-12">
-          <div className="w-full max-w-2xl">
-            <PromptArea />
-          </div>
+        <main className="flex-1 flex flex-col items-center justify-center px-4">
+          <PromptArea
+            placeholder="AI 썸네일 디자인을 설명해주세요..."
+            onSearch={(query) => {
+              console.log('Search query:', query);
+            }}
+          />
         </main>
       </div>
     </div>
   );
-};
-
-export default DashboardPage;
+}
