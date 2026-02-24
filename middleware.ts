@@ -26,8 +26,18 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // 세션 갱신을 위해 getUser 호출
-  await supabase.auth.getUser()
+  // 세션 갱신 및 유저 정보 가져오기
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // 비로그인 → /dashboard 접근 차단
+  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/auth', request.url))
+  }
+
+  // 로그인 → /auth 접근 시 dashboard로
+  if (user && request.nextUrl.pathname === '/auth') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
 
   return response
 }

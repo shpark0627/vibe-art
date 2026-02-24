@@ -55,7 +55,7 @@ const AuthPage = () => {
             } else if (signInError) {
                 throw signInError;
             } else {
-                router.push('/');
+                router.push('/dashboard');
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : '로그인 실패');

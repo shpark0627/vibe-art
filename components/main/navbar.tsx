@@ -30,7 +30,10 @@ const Navbar = () => {
           <div className="px-6 py-2 text-white/60 text-sm">로딩 중...</div>
         ) : user ? (
           <>
-            <span className="text-white/70 text-sm">{user.email}</span>
+            <Link href="/dashboard" className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-white text-sm hover:bg-white/10 transition backdrop-blur-md">
+              대시보드
+            </Link>
+            <span className="text-white/70 text-sm hidden lg:block">{user.email}</span>
             <button
               onClick={signOut}
               className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-white text-sm hover:bg-white/10 transition backdrop-blur-md"

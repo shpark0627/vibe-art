@@ -4,7 +4,24 @@
       "Bash(cd:*)",
       "Bash(head:*)",
       "Bash(pkill:*)",
-      "Bash(sleep 3:*)"
+      "Bash(sleep 3:*)",
+      "Bash(echo 서버 확인 중...:*)",
+      "mcp__supabase__list_projects",
+      "Bash(ls:*)",
+      "mcp__supabase__get_project",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_publishable_keys",
+      "mcp__supabase__apply_migration",
+      "Bash(tail:*)",
+      "Bash",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__search_docs",
+      "mcp__supabase__execute_sql"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }
